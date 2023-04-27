@@ -1,5 +1,5 @@
 import "@/styles/App.css"
-import type { Map } from "leaflet"
+import type { Map, TileLayer } from "leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import "proj4leaflet"
@@ -12,6 +12,7 @@ import PositionIndicator from "./components/MapIndicators/PositionIndicator"
 function App() {
   const [visibility, setVisibility] = useState(false)
   const [map, setMap] = useState<Map | null>(null)
+  const [layer, setLayer] = useState<TileLayer.WMS | null>(null)
 
   const handleVisibilityChange = (event: ChangeEvent<HTMLInputElement>) => {
     setVisibility(event.target.checked)
@@ -43,6 +44,7 @@ function App() {
             url="https://service.pdok.nl/cbs/pd/wms/v1_0?dpi=135&map_resolution=135&FORMAT_OPTIONS=dpi%3A135"
             crs={rdProjection}
             crossOrigin
+            ref={setLayer}
             params={{
               request: "GetMap",
               version: "1.3.0",
@@ -75,7 +77,7 @@ function App() {
 
       <LayerController
         layerName="population density"
-        layerId="population-density"
+        layer={layer}
         onVisibilityToggle={handleVisibilityChange}
       />
     </>

@@ -76,7 +76,7 @@ function App() {
       </MapContainer>
 
       <LayerController
-        layerName="population density"
+        layerName="population distribution"
         layer={layer}
         onVisibilityToggle={handleVisibilityChange}
       />

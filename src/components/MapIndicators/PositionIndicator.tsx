@@ -23,7 +23,7 @@ export default function PositionIndicator({ map }: Props) {
   }, [map])
 
   return (
-    <div className="absolute left-1/2 top-5 z-10 -translate-x-1/2 transform bg-white p-4">
+    <div className="absolute left-1/2 top-5 z-10 -translate-x-1/2 transform rounded-xl border border-gray-400 bg-gray-100 p-4">
       <p>Latitude: {coordinates?.[0]}</p>
       <p>Longitude: {coordinates?.[1]}</p>
     </div>

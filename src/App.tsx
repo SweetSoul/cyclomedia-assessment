@@ -1,6 +1,7 @@
 import "@/styles/App.css"
 import type { Map } from "leaflet"
 import "leaflet/dist/leaflet.css"
+import proj4 from "proj4"
 import "proj4leaflet"
 import type { ChangeEvent } from "react"
 import { useState } from "react"
@@ -14,8 +15,10 @@ import {
 import OpacityController from "./components/Controllers/OpacityController"
 import WFSLayer from "./components/CustomLayers/WFSLayer"
 import PositionIndicator from "./components/MapIndicators/PositionIndicator"
-import { rdProjection } from "./constants/rdProjection"
+import { rdProjDef, rdProjection } from "./constants/rdProjection"
 import { calculatePplPerSqKilometer } from "./utils/densityCalc"
+
+proj4.defs("EPSG:28992", rdProjDef)
 
 function App() {
   const [map, setMap] = useState<Map | null>(null)
@@ -41,46 +44,6 @@ function App() {
           tileSize={256}
         />
         <LayersControl position="topright">
-          <LayersControl.Overlay name="Population Distribution per 1km2 grid">
-            <FeatureGroup>
-              <WFSLayer
-                id="pd:grid-1km"
-                url="https://service.pdok.nl/cbs/pd/wfs/v1_0"
-                typeName="pd:pd-nl-grid-2012"
-                version="2.0.0"
-                srsName="EPSG:4326"
-                outputFormat="application/json"
-                maxFeatures={1000}
-                style={(feature) => {
-                  const pplPerSqKm = calculatePplPerSqKilometer(
-                    feature?.properties["PD_NL_LAU_T_OBS_VALUE"] ?? 0,
-                    feature?.properties["areaValue"] ?? 0
-                  )
-                  let finalColor = "#790000"
-                  let finalOpacity = opacity
-                  if (pplPerSqKm < 1) {
-                    finalColor = "#fff"
-                    finalOpacity = 0
-                  } else if (pplPerSqKm >= 1 && pplPerSqKm <= 4)
-                    finalColor = "#f2fd0f"
-                  else if (pplPerSqKm >= 5 && pplPerSqKm <= 19)
-                    finalColor = "#ffa575"
-                  else if (pplPerSqKm >= 20 && pplPerSqKm < 199)
-                    finalColor = "#fa5107"
-                  else if (pplPerSqKm >= 200 && pplPerSqKm < 499)
-                    finalColor = "#fa4e05"
-                  else if (pplPerSqKm >= 500 && pplPerSqKm < 4999)
-                    finalColor = "#ff0016"
-                  return {
-                    fillColor: finalColor,
-                    weight: 1,
-                    fillOpacity: finalOpacity,
-                    color: "#000",
-                  }
-                }}
-              />
-            </FeatureGroup>
-          </LayersControl.Overlay>
           <LayersControl.Overlay name="Population Distribution by NUTS2 region">
             <FeatureGroup>
               <WFSLayer
@@ -91,11 +54,20 @@ function App() {
                 srsName="EPSG:4326"
                 outputFormat="application/json"
                 maxFeatures={1000}
-                style={(feature) => {
-                  const pplPerSqKm = calculatePplPerSqKilometer(
-                    feature?.properties["PD_NL_LAU_T_OBS_VALUE"] ?? 0,
-                    feature?.properties["areaValue"] ?? 0
+                onEachFeature={(feature, layer) => {
+                  layer.bindPopup(
+                    `<b>${
+                      feature?.properties?.["text"]
+                    }</b><br/><b>Density</b>: ${
+                      feature?.properties?.["PD_NL_LAU_D_OBS_VALUE"]
+                    } ppl/km²<br/><b>Area</b>: ${
+                      feature?.properties["areaValue"] / 1000000
+                    } km²`
                   )
+                }}
+                style={(feature) => {
+                  const pplPerSqKm =
+                    feature?.properties["PD_NL_LAU_D_OBS_VALUE"] ?? 0
                   let finalColor = "#67000d"
                   const finalOpacity = opacity
                   if (pplPerSqKm < 300) finalColor = "#fae8de"
@@ -127,7 +99,9 @@ function App() {
                 maxFeatures={1000}
                 onEachFeature={(feature, layer) => {
                   layer.bindPopup(
-                    `<b>Population</b>: ${
+                    `<b>${
+                      feature?.properties?.["text"]
+                    }</b><br/><b>Population</b>: ${
                       feature?.properties?.["PD_NL_LAU_T_OBS_VALUE"]
                     }<br/><b>Density</b>: ${calculatePplPerSqKilometer(
                       feature?.properties["PD_NL_LAU_T_OBS_VALUE"] ?? 0,
@@ -170,3 +144,22 @@ function App() {
 }
 
 export default App
+
+//https://service.pdok.nl/cbs/pd/wms/v1_0?SERVICE=WMS
+//VERSION=1.3.0
+//REQUEST=GetFeatureInfo
+//FORMAT=image%2Fpng
+//TRANSPARENT=true
+//QUERY_LAYERS=pd_nl_grid_2012
+//layers=pd_nl_grid_2012
+//DPI=135
+//MAP_RESOLUTION=135
+//INFO_FORMAT=application%2Fjson
+//FEATURE_COUNT=8
+//I=50
+//J=50
+//CRS=EPSG%3A28992
+//STYLES=
+//WIDTH=101
+//HEIGHT=101
+//BBOX=118072.52139929695%2C421832.5966711458%2C122464.20353051128%2C426224.2788023601

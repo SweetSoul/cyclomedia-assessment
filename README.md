@@ -6,6 +6,14 @@ This is a small project that uses the [BRT Achtergrondkaart](https://pdok.nl/dat
 
 [Live demo](https://cyclomedia-assessment.vercel.app/) (deployed on Vercel)
 
+## Features
+
+- Display base map using the BRT Achtergrondkaart and with EPSG:28992 projection (RD New)
+- Toggle different WFS Layers from the Population Distribution Dataset
+- Control overall opacity of overlay layers
+- While hovering you'll see coordinates in EPSG:4326 (WGS84)
+- Clicking with an overlay activated will trigger show some important information as a popup
+
 ## Stack
 
 - Yarn

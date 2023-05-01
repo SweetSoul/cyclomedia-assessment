@@ -12,7 +12,7 @@ This is a small project that uses the [BRT Achtergrondkaart](https://pdok.nl/dat
 - Toggle different WFS Layers from the Population Distribution Dataset
 - Control overall opacity of overlay layers
 - While hovering you'll see coordinates in EPSG:4326 (WGS84)
-- Clicking with an overlay activated will trigger show some important information as a popup
+- Clicking with an overlay activated will show some important information in a popup
 
 ## Stack
 

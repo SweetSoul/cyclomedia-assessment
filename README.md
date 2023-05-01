@@ -25,7 +25,7 @@ This is a small project that uses the [BRT Achtergrondkaart](https://pdok.nl/dat
 
 ## Resources used
 
-- [BRT Achtergrondkaart](https://pdok.nl/dataset)
+- [BRT Achtergrondkaart](https://www.pdok.nl/introductie/-/article/basisregistratie-topografie-achtergrondkaarten-brt-a-)
 - [Population Distribution Layer](https://www.pdok.nl/introductie/-/article/cbs-bevolkingsspreiding-population-distribution-)
 
 ## How to run

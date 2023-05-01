@@ -1,85 +1,170 @@
 import "@/styles/App.css"
-import type { Map, TileLayer } from "leaflet"
-import L from "leaflet"
+import type { Map } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import "proj4leaflet"
 import type { ChangeEvent } from "react"
 import { useState } from "react"
-import { MapContainer, ScaleControl, WMSTileLayer } from "react-leaflet"
-import LayerController from "./components/LayerController/LayerController"
+import {
+  FeatureGroup,
+  LayersControl,
+  MapContainer,
+  ScaleControl,
+  TileLayer,
+} from "react-leaflet"
+import OpacityController from "./components/Controllers/OpacityController"
+import WFSLayer from "./components/CustomLayers/WFSLayer"
 import PositionIndicator from "./components/MapIndicators/PositionIndicator"
+import { rdProjection } from "./constants/rdProjection"
+import { calculatePplPerSqKilometer } from "./utils/densityCalc"
 
 function App() {
-  const [visibility, setVisibility] = useState(false)
   const [map, setMap] = useState<Map | null>(null)
-  const [layer, setLayer] = useState<TileLayer.WMS | null>(null)
+  const [opacity, setOpacity] = useState(1)
 
-  const handleVisibilityChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setVisibility(event.target.checked)
+  const handleOpacityChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setOpacity(Number(e.target.value))
   }
-
-  const rdProjection = new L.Proj.CRS(
-    "EPSG:28992",
-    "+proj=sterea +lat_0=52.090 +lon_0=5.117 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +towgs84=565.4171,50.3319,465.5524,1.9342,-1.6677,9.1019,4.0725 +units=m +no_defs +type=crs",
-    {
-      transformation: new L.Transformation(1, 285401.92, -1, 903401.92),
-      resolutions: [
-        3440.64, 1720.32, 860.16, 430.08, 215.04, 107.52, 53.76, 26.88, 13.44,
-        6.72, 3.36, 1.68, 0.84, 0.42, 0.21, 0.105,
-      ],
-    }
-  )
 
   return (
     <>
       <PositionIndicator map={map} />
       <MapContainer
         ref={setMap}
-        center={[52.025, 4.8314]}
+        center={[52.03, 4.833]}
         zoom={6}
         crs={rdProjection}
       >
-        {visibility && (
-          <WMSTileLayer
-            url="https://service.pdok.nl/cbs/pd/wms/v1_0?dpi=135&map_resolution=135&FORMAT_OPTIONS=dpi%3A135"
-            crs={rdProjection}
-            crossOrigin
-            ref={setLayer}
-            params={{
-              request: "GetMap",
-              version: "1.3.0",
-              styles: "",
-              layers: "pd_nl_lau_2018",
-              format: "image/png",
-              width: map?.getPixelBounds().getSize().x ?? 256,
-              height: map?.getPixelBounds().getSize().y ?? 256,
-              transparent: true,
-            }}
-          />
-        )}
-        <WMSTileLayer
-          url="https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0?layer=standaard&tilematrixset=EPSG%3A28992&TileCol={x}&TileRow={y}&TileMatrix={z}"
-          crs={rdProjection}
-          crossOrigin
-          params={{
-            service: "WMTS",
-            request: "GetTile",
-            version: "1.0.0",
-            styles: "default",
-            layers: "",
-            format: "image/png",
-            width: 256,
-            height: 256,
-          }}
+        <TileLayer
+          url="https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:28992/{z}/{x}/{y}.png"
+          minZoom={0}
+          maxZoom={12}
+          tileSize={256}
         />
+        <LayersControl position="topright">
+          <LayersControl.Overlay name="Population Distribution per 1km2 grid">
+            <FeatureGroup>
+              <WFSLayer
+                id="pd:grid-1km"
+                url="https://service.pdok.nl/cbs/pd/wfs/v1_0"
+                typeName="pd:pd-nl-grid-2012"
+                version="2.0.0"
+                srsName="EPSG:4326"
+                outputFormat="application/json"
+                maxFeatures={1000}
+                style={(feature) => {
+                  const pplPerSqKm = calculatePplPerSqKilometer(
+                    feature?.properties["PD_NL_LAU_T_OBS_VALUE"] ?? 0,
+                    feature?.properties["areaValue"] ?? 0
+                  )
+                  let finalColor = "#790000"
+                  let finalOpacity = opacity
+                  if (pplPerSqKm < 1) {
+                    finalColor = "#fff"
+                    finalOpacity = 0
+                  } else if (pplPerSqKm >= 1 && pplPerSqKm <= 4)
+                    finalColor = "#f2fd0f"
+                  else if (pplPerSqKm >= 5 && pplPerSqKm <= 19)
+                    finalColor = "#ffa575"
+                  else if (pplPerSqKm >= 20 && pplPerSqKm < 199)
+                    finalColor = "#fa5107"
+                  else if (pplPerSqKm >= 200 && pplPerSqKm < 499)
+                    finalColor = "#fa4e05"
+                  else if (pplPerSqKm >= 500 && pplPerSqKm < 4999)
+                    finalColor = "#ff0016"
+                  return {
+                    fillColor: finalColor,
+                    weight: 1,
+                    fillOpacity: finalOpacity,
+                    color: "#000",
+                  }
+                }}
+              />
+            </FeatureGroup>
+          </LayersControl.Overlay>
+          <LayersControl.Overlay name="Population Distribution by NUTS2 region">
+            <FeatureGroup>
+              <WFSLayer
+                id="pd:nuts2"
+                url="https://service.pdok.nl/cbs/pd/wfs/v1_0"
+                typeName="pd:pd-nl-nuts2-2018"
+                version="2.0.0"
+                srsName="EPSG:4326"
+                outputFormat="application/json"
+                maxFeatures={1000}
+                style={(feature) => {
+                  const pplPerSqKm = calculatePplPerSqKilometer(
+                    feature?.properties["PD_NL_LAU_T_OBS_VALUE"] ?? 0,
+                    feature?.properties["areaValue"] ?? 0
+                  )
+                  let finalColor = "#67000d"
+                  const finalOpacity = opacity
+                  if (pplPerSqKm < 300) finalColor = "#fae8de"
+                  else if (pplPerSqKm >= 300 && pplPerSqKm < 500)
+                    finalColor = "#d19f8c"
+                  else if (pplPerSqKm >= 500 && pplPerSqKm < 900)
+                    finalColor = "#ee8f7b"
+                  else if (pplPerSqKm >= 900 && pplPerSqKm < 1200)
+                    finalColor = "#d42020"
+                  return {
+                    fillColor: finalColor,
+                    fillOpacity: finalOpacity,
+                    weight: 1.5,
+                    color: "#f2f2f2",
+                  }
+                }}
+              />
+            </FeatureGroup>
+          </LayersControl.Overlay>
+          <LayersControl.Overlay name="Population Distribution per LAU region">
+            <FeatureGroup>
+              <WFSLayer
+                id="pd:lau"
+                url="https://service.pdok.nl/cbs/pd/wfs/v1_0"
+                typeName="pd:pd-nl-lau-2018"
+                version="2.0.0"
+                srsName="EPSG:4326"
+                outputFormat="application/json"
+                maxFeatures={1000}
+                onEachFeature={(feature, layer) => {
+                  layer.bindPopup(
+                    `<b>Population</b>: ${
+                      feature?.properties?.["PD_NL_LAU_T_OBS_VALUE"]
+                    }<br/><b>Density</b>: ${calculatePplPerSqKilometer(
+                      feature?.properties["PD_NL_LAU_T_OBS_VALUE"] ?? 0,
+                      feature?.properties["areaValue"] ?? 0
+                    )} ppl/km²<br/><b>Area</b>: ${
+                      feature?.properties["areaValue"] / 1000000
+                    } km²`
+                  )
+                }}
+                style={(feature) => {
+                  const pplPerSqKm = calculatePplPerSqKilometer(
+                    feature?.properties["PD_NL_LAU_T_OBS_VALUE"] ?? 0,
+                    feature?.properties["areaValue"] ?? 0
+                  )
+                  let finalColor = "#67000d"
+                  const finalOpacity = opacity
+                  if (pplPerSqKm < 300) finalColor = "#fae8de"
+                  else if (pplPerSqKm >= 300 && pplPerSqKm < 500)
+                    finalColor = "#d19f8c"
+                  else if (pplPerSqKm >= 500 && pplPerSqKm < 900)
+                    finalColor = "#ee8f7b"
+                  else if (pplPerSqKm >= 900 && pplPerSqKm < 1200)
+                    finalColor = "#d42020"
+                  return {
+                    fillColor: finalColor,
+                    weight: 1,
+                    fillOpacity: finalOpacity,
+                    color: "#777",
+                  }
+                }}
+              />
+            </FeatureGroup>
+          </LayersControl.Overlay>
+        </LayersControl>
         <ScaleControl position="bottomleft" imperial={false} />
       </MapContainer>
-
-      <LayerController
-        layerName="population distribution"
-        layer={layer}
-        onVisibilityToggle={handleVisibilityChange}
-      />
+      <OpacityController onOpacityChange={handleOpacityChange} />
     </>
   )
 }

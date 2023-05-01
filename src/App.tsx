@@ -33,7 +33,7 @@ function App() {
       <PositionIndicator map={map} />
       <MapContainer
         ref={setMap}
-        center={[52.03, 4.833]}
+        center={[52.09, 5.1]}
         zoom={6}
         crs={rdProjection}
       >
